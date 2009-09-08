@@ -22,7 +22,7 @@
                         ;; I/O Vector
                         jmp PBI_SIO
                         
-                        ;; Interrupt Vector, exist with (RTS?)
+                        ;; Interrupt Vector, exit with PLA/RTI
                         jmp PBI_IRQ
                         
                         ;; ID Number 2
@@ -31,19 +31,19 @@
                         ;; Device Name (NOT USED)
                         .byte 0
                         
-                        ;; CIO vectors
-                        .word OPEN_VEC
-                        .word CLOSE_VEC
-                        .word GETBYTE_VEC
-                        .word PUTBYTE_VEC
-                        .word STATUS_VEC
-                        .word SPECIAL_VEC
+                        ;; Initial CIO vectors
+                        .word 0 ;OPEN_VEC
+                        .word 0 ;CLOSE_VEC
+                        .word 0 ;GETBYTE_VEC
+                        .word 0 ;PUTBYTE_VEC
+                        .word 0 ;STATUS_VEC
+                        .word 0 ;SPECIAL_VEC
                         
                         jmp PBI_INIT
                         
                         ;; Unused byte
                         .byte 0
-                        
+
 PBI_SIO:
                         clc
                         rts

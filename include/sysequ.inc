@@ -1,33 +1,5 @@
-
-
-;
-;                    ATARI 800 EQUATE LISTING
-;
-;
-;
-;This listing is based on the original release of Operating System,
-;version A.  The vectors shown here were not changed in version B.
-;New equates for XL and XE models are included and noted.  Changes
-;from version B to XL/XE are also noted.
-;
-;Most of the equate names given below are the official Atari
-;names.  They are in common use but are not mandatory.
-;
-;
-;       DEVICE NAMES
-;
-;
-;SCREDT = "E"   SCREEN EDITOR
-;KBD    = "K"   KEYBOARD
-;DISPLY = "S"   DISPLAY
-;PRINTR = "P"   PRINTER
-;CASSET = "C"   CASSETTE
-;DISK   = "D"   DISK DRIVE
-;
-;
 ;
 ;       STATUS  CODES  
-;
 ;
 EOK     = $01       ;1
 EBRKABT = $80       ;128 BREAK KEY ABORT
@@ -55,7 +27,7 @@ EISOPEN = $96       ;150 PORT ALREADY OPEN
 ENOCONC = $97       ;151 CONCURRENT MODE I/O NOT ENABLED
 EBADBUF = $98       ;152 ILLEGAL BUFFER
 EACCONC = $99       ;153 ACTIVE CONCURRENT MODE I/O ERROR
-ENOCONC = $9A       ;154 CONCURRENT MODE I/O NOT ACTIVE
+ENOCNCA = $9A       ;154 CONCURRENT MODE I/O NOT ACTIVE
 
 EDRIVNO = $A0       ;160 DRIVE NUMBER ERROR
 ENFILE  = $A1       ;161 TOO MANY OPEN FILES
@@ -72,53 +44,18 @@ EPNTINV = $AB       ;171 INVALID POINT
 EBADAPP = $AC       ;172 ILLEGAL APPEND
 EBADSEC = $AD       ;173 BAD SECTORS AT FORMAT
 
-;
-;
-;
-;
-;  COMMAND CODES FOR CIO
-;
-;
-OPEN   = $03        ;3
-OPREAD = $04        ;4 OPEN FOR INPUT
-GETREC = $05        ;5 GET RECORD
-OPDIR  = $06        ;6 OPEN TO DISK DIRECTORY
-GETCHR = $07        ;7 GET BYTE
-OWRITE = $08        ;8 OPEN FOR OUTPUT
-PUTREC = $09        ;9 WRITE RECORD
-APPEND = $09        ;9 OPEN TO APPEND TO END OF DISK FILE
-MXDMOD = $10       ;16 OPEN TO SPLIT SCREEN (MIXED MODE)
-PUTCHR = $0B       ;11 PUT-BYTE
-CLOSE  = $0C       ;12
-OUPDAT = $0C       ;12 OPEN FOR INPUT AND OUTPUT AT THE SAME TIME
-STATUS = $0D       ;13
-SPECIL = $0E       ;14 BEGINNING OF SPECIAL COMMANDS
-DRAWLN = $11       ;17 SCREEN DRAW
-FILLIN = $12       ;18 SCREEN FILL
-RENAME = $20       ;32
-INSCLR = $20       ;32 OPEN TO SCREEN BUT DON'T ERASE
-DELETE = $21       ;33
-DFRMAT = $21       ;33 FORMAT DISK (RESIDENT DISK HANDLER (RDH))
-LOCK   = $23       ;35
-UNLOCK = $24       ;36
-POINT  = $25       ;37
-NOTE   = $26       ;38
-PTSECT = $50       ;80 RDH PUT SECTOR
-GTSECT = $52       ;82 RDH GET SECTOR
-DSTAT  = $53       ;83 RDH GET STATUS
-PSECTV = $57       ;87 RDH PUT SECTOR AND VERIFY
-NOIRG  = $80      ;128 NO GAP CASSETTE MODE
-CR     = $9B      ;155 CARRIAGE RETURN (EOL)
-;
-IOCBSZ = $10       ;16 IOCB SIZE
-MAXIOC = $80      ;128 MAX IOCB BLOCK SIZE
-IOCBF  = $FF      ;255 IOCB FREE
-;
+; Network-specific:
+
+ERESET              = $B0   ; Connection reset by peer
+EADDRINUSE          = $B1   ; Binding to an already-bound address
+ESTATE              = $B2   ; Bad socket state (e.g. already connecting)
+ECONNREFUSED        = $B3   ; Connection refused by peer
+EAGAIN              = $FF   ; Retry non-blocking operation
+
 ;
 ;       OS VARIABLES
 ;
 ;          PAGE 0
-;
 ;        $00        ;0 (XL) RESERVED
 NGFLAG = $01        ;1 (XL) FOR POWER-UP SELF TEST
 CASINI = $02        ;2
@@ -126,7 +63,7 @@ RAMLO  = $04        ;4 POINTER FOR SELF TEST
 TRAMSZ = $06        ;6 TEMPORARY RAM SIZE
 TSTDAT = $07        ;7 TEST DATA
 WARMST = $08        ;8
-BOOT?  = $09        ;9 SUCCESSFUL BOOT FLAG
+BOOTQ  = $09        ;9 SUCCESSFUL BOOT FLAG
 DOSVEC = $0A       ;10 PROGRAM RUN VECTOR
 DOSINI = $0C       ;12 PROGRAM INITIALIZATION
 APPMHI = $0E       ;14 DISPLAY LOW LIMIT
