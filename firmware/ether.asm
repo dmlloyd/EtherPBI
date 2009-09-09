@@ -1,9 +1,10 @@
 
 
             ;; Ethernet interface module
-            
-            .include "ether.inc"
-            .include "regs.inc"
+
+                        .include "ether.inc"
+                        .include "regs.inc"
+                        .include "sysequ.inc"
 
 ETHER_PHY_START:
             ;; Disable interrupts.
@@ -28,7 +29,7 @@ ETHER_PHY_START:
             ;; Step 5.3.3.5: PAUSE packet capability
             ;; Step 5.3.4: Enable physical layer
             ;; Step 5.3.4.1: Set the enable bit
-                        lda #ETH_PHYCN_PHYEN
+                        lda #%10000000  ; PHYEN
                         sta ETH_PHYCN
             ;; Step 5.3.4.2: Wait for phy to power up (>1 ms)
                         ldx #17 ;; TODO: Does this work for PAL as well?
@@ -36,7 +37,7 @@ ETHER_PHY_START:
                         dex
                         bne @delay
             ;; Step 5.3.4.3: Enable transmitter and receiver
-                        lda #ETH_PHYCN_PHYEN+ETH_PHYCN_TXEN+ETH_PHYCN_RXEN
+                        lda #%11100000  ; PHYEN+TXEN+RXEN
                         sta ETH_PHYCN
             ;; Step 5.3.5: Wait for auto-negotiate to complete
 

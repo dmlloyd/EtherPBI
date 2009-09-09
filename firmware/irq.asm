@@ -2,7 +2,7 @@
                         .include "ether.inc"
                         .include "regs.inc"
                         .include "netequ.inc"
-
+                        .include "arp.inc"
 
                         .segment "IRQ"
 
@@ -106,7 +106,7 @@ RECEIVE:
                         inc RECV_INVALID
                         bne @done
                         inc RECV_INVALID+1
-@skip:                  lda #%00000010  ; RXSKIP the invalid packet
+skip:                  lda #%00000010  ; RXSKIP the invalid packet
                         sta ETH_RXCN
                         rts
 @valid:                 ; Check that the packet is OK
@@ -117,7 +117,7 @@ RECEIVE:
                         and #%00000010  ; BCAST
                         beq @next_dmac_in   ; no? then check the MAC address
                         ldy #6
-@consume                lda ETH_RXAUTOREAD
+@consume:               lda ETH_RXAUTOREAD
                         dey
                         bne @consume
                         beq @next_mac_in
@@ -131,7 +131,7 @@ RECEIVE:
                         bne @next_dmac_in
                         cmp USER_MAC_ADDR+5
                         ; no match? then skip the packet
-                        bne @skip
+                        bne skip
 
 @next_mac_in:           ; Get the source MAC address
                         ldy #256-6
@@ -143,12 +143,12 @@ RECEIVE:
                         lda ETH_RXAUTOREAD
                         cmp #$08
                         ; not ICMP or IP? skip it
-                        bne @skip
+                        bne skip
                         lda ETH_RXAUTOREAD
                         cmp #<ETHERTYPE_IP
                         beq RECEIVE_IP
                         cmp #<ETHERTYPE_ARP
-                        bne @skip
+                        bne skip
                         ;jmp RECEIVE_ARP
 
                         
@@ -169,13 +169,13 @@ RECEIVE_ARP:            ; Read in the ARP packet data
                         ; PLEN must == $04
                         lda ETH_RXAUTOREAD
                         sbc #4
-                        bne @skip   ; if any of that stuff didn't match
+                        bne skip   ; if any of that stuff didn't match
                         ; Next is OPER
                         ldx ETH_RXAUTOREAD
                         dex
                         beq RECEIVE_ARP_REQUEST
                         dex
-                        bne @skip   ; unsupported op
+                        bne skip   ; unsupported op
                         ;jmp RECEIVE_ARP_REPLY
 
                         ; Receive an ARP reply

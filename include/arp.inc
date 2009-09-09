@@ -31,6 +31,7 @@
                         ;
                         ARP_TABLE_SIZE  = 21
                         
+                        ARP_MAX_AGE     = 20 ; minutes
 
                         ; First, the entry age.
                         ARP_TAB_AGE     = ARP_TABLE + ARP_TABLE_SIZE * 0

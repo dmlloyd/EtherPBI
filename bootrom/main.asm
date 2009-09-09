@@ -1,7 +1,6 @@
 
                         .include "sysequ.inc"
                         .include "ether.inc"
-                        .include "inflate.inc"
 
                         DEVICE_NAME     = 'N'
 
@@ -132,7 +131,6 @@ clear_byte:
                         bpl clear_byte  ; stop when X hits $FF
 
                         ; Load firmware image from flash.
-                        ; Each bank is separately compressed.
                         lda #0
                         sta $90 ; this will be our placeholder for the bank #
                         ; Start at the beginning...
@@ -148,15 +146,22 @@ clear_byte:
 commence:
                         sta $91 ; the number of banks to read
 load_bank:
-                        lda #<$D100
-                        sta $80 ; dest low byte
-                        lda #>$D100
-                        sta $81 ; dest high byte
-                        jsr INFLATE
+                        ldx ETH_FLASHAUTORD ; low count
+                        ldy ETH_FLASHAUTORD ; high count
+@l1:
+                        lda ETH_FLASHAUTORD
+                        sta $D100,x
+                        inx
+                        bne @l1
+@l2:
+                        lda ETH_FLASHAUTORD
+                        sta $D200,x
+                        inx
+                        bne @l2
                         
-                        dec $91
-                        bne load_bank
-done_uncompressing:
+
+
+
                         ; Restore system IRQs, if they were enabled before.
                         plp
 
