@@ -1,11 +1,12 @@
 
                         .include "sysequ.inc"
+                        .include "ether.inc"
+                        .include "inflate.inc"
 
                         DEVICE_NAME     = 'N'
 
-
                         ;; Start at boot rom area at $D800
-                        .segment "BOOT_ROM"
+                        .segment "HEADER"
                         
                         ;; Checksum (NOT USED)
                         .byte 0, 0
@@ -32,38 +33,30 @@
                         .byte 0
                         
                         ;; Initial CIO vectors
-                        .word 0 ;OPEN_VEC
-                        .word 0 ;CLOSE_VEC
-                        .word 0 ;GETBYTE_VEC
-                        .word 0 ;PUTBYTE_VEC
-                        .word 0 ;STATUS_VEC
-                        .word 0 ;SPECIAL_VEC
+                        .word 0 ;OPEN_VEC-1
+                        .word 0 ;CLOSE_VEC-1
+                        .word 0 ;GETBYTE_VEC-1
+                        .word 0 ;PUTBYTE_VEC-1
+                        .word 0 ;STATUS_VEC-1
+                        .word 0 ;SPECIAL_VEC-1
                         
-                        jmp PBI_INIT
+                        ;; Device initialization
+                        jmp RESET
+                        
                         
                         ;; Unused byte
                         .byte 0
 
+                        .segment "BOOT_ROM"
 PBI_SIO:
                         clc
                         rts
 
 PBI_IRQ:
-                        rts
+                        pla
+                        rti
 
 PBI_INIT:
-                        ;; Register our PBI device
-                        lda DEVMASK
-                        ora NDEVREQ
-                        sta DEVMASK
-                        ;; Add our device to HATABS
-                        ldx #DEVICE_NAME
-                        lda #<GENDEV
-                        ldy #>GENDEV
-                        jsr NEWDEV
-                        bmi @exit
-                        bcs @exit
-@exit:                  rts
 
 OPEN_VEC:
                         ;; do open
@@ -85,99 +78,96 @@ OPEN_VEC:
                         sec
                         rts
 
-                        .segment "TABLES"
+.proc RESET
+                        ;
+                        ; Complete reset procedure.
+                        ;
+                        ; In:   -
+                        ; Out:  -
+                        ;
 
-                        ;
-                        ; Netmask/Hostmask tables.
-                        ;
-                        ; Find a byte starting in the fourth row of either
-                        ; table and read that byte plus the three bytes *above* it 
-                        ; to get the mask bits.
-                        ;
-                        ; To get the netmask for each byte, put the netmask bits in X and do:
-                        ; (for byte 0): lda NETMASK_TABLE+24,x
-                        ; (for byte 1): lda NETMASK_TABLE+16,x
-                        ; (for byte 2): lda NETMASK_TABLE+8,x
-                        ; (for byte 3): lda NETMASK_TABLE+0,x
-                        ;
-                        ; To get the broadcast address, use ORA against HOSTMASK_TABLE.
-                        ; To get the network address, use AND against NETMASK_TABLE.
-                        ; To determine whether one IP/mask encompasses another,
-                        ; 
-                        ; Note: don't let this cross a page boundary else there will
-                        ; be a one-cycle penalty...
-NETMASK_TABLE:
-                        .byte $00, $00, $00, $00, $00, $00, $00, $00
-                        .byte $00, $00, $00, $00, $00, $00, $00, $00
-                        .byte $00, $00, $00, $00, $00, $00, $00, $00
-                        .byte $00, $80, $C0, $E0, $F0, $F8, $FC, $FE
-                        ; These bytes are duplicated in the next table, so
-                        ; just merge the tables...
-                        ;.byte $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF
-                        ;.byte $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF
-                        ;.byte $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF
-                        ;.byte $FF
-HOSTMASK_TABLE:
-                        .byte $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF
-                        .byte $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF
-                        .byte $FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF
-                        .byte $FF, $7F, $3F, $1F, $0F, $07, $03, $01
-                        .byte $00, $00, $00, $00, $00, $00, $00, $00
-                        .byte $00, $00, $00, $00, $00, $00, $00, $00
-                        .byte $00, $00, $00, $00, $00, $00, $00, $00
-                        .byte $00
+                        ; Disable IRQs.
+                        php
+                        sei
+                        ; From CP2200/1 data sheet 6.2. Reset Initialization...
+                        ; Step 1: Wait for reset pin to rise (duh)
+                        ; Step 2: Wait for oscillator initialization to complete.
+                        ; (we will poll the interrupt status register)
 
-                        ;
-                        ; Bit index table.  Must be located immediately
-                        ; after HOSTMASK_TABLE.
-                        ;
-                        ; If the bit index is in X, get the corresponding bit via:
-                        ; lda BIT_TABLE,x       ; for byte 0
-                        ; lda BIT_TABLE-8,x     ; for byte 1
-                        ; lda BIT_TABLE-16,x    ; for byte 2
-                        ; lda BIT_TABLE-24,x    ; for byte 3
-BIT_TABLE:
-                        .byte $01, $02, $04, $08, $10, $20, $40, $80
-                        .byte $00, $00, $00, $00, $00, $00, $00, $00
-                        .byte $00, $00, $00, $00, $00, $00, $00, $00
-                        .byte $00, $00, $00, $00, $00, $00, $00, $00
+wait0:
+                        lda ETH_INT0
+                        and #%00001000  ; Oscillator stabilized?
+                        bne wait2       ; More quickly than expected!
+wait1:
+                        sta WSYNC       ; Don't spam the register, plz
+                        lda ETH_INT0
+                        and #%00001000  ; Oscillator stabilized?
+                        beq wait1
+wait2:
+                        ; Step 3: Wait for Self Initialization to complete.
+                        ; The INT0 interrupt status register on page 31 should be
+                        ; checked to determine when Self Initialization completes.
+                        lda ETH_INT0
+                        and #%00000100  ; Self-init complete?
+                        bne chip_ready  ; Chip is ready
+wait3:
+                        sta WSYNC       ; Don't spam...
+                        lda ETH_INT0
+                        and #%00000100  ; Self-init complete?
+                        beq wait3
 
-                        ;
-                        ; Bit count table.
-                        ;
-                        ; Each entry corresponds to the number of 1 bits
-                        ; present in the offset of that value.
-                        ;
-BITCOUNT_TABLE:
-                        .byte $00, $01, $01, $02, $01, $02, $02, $03
-                        .byte $01, $02, $02, $03, $02, $03, $03, $04
-                        .byte $01, $02, $02, $03, $02, $03, $03, $04
-                        .byte $02, $03, $03, $04, $03, $04, $04, $05
-                        .byte $01, $02, $02, $03, $02, $03, $03, $04
-                        .byte $02, $03, $03, $04, $03, $04, $04, $05
-                        .byte $02, $03, $03, $04, $03, $04, $04, $05
-                        .byte $03, $04, $04, $05, $04, $05, $05, $06
-                        .byte $01, $02, $02, $03, $02, $03, $03, $04
-                        .byte $02, $03, $03, $04, $03, $04, $04, $05
-                        .byte $02, $03, $03, $04, $03, $04, $04, $05
-                        .byte $03, $04, $04, $05, $04, $05, $05, $06
-                        .byte $02, $03, $03, $04, $03, $04, $04, $05
-                        .byte $03, $04, $04, $05, $04, $05, $05, $06
-                        .byte $03, $04, $04, $05, $04, $05, $05, $06
-                        .byte $04, $05, $05, $06, $05, $06, $06, $07
-                        .byte $01, $02, $02, $03, $02, $03, $03, $04
-                        .byte $02, $03, $03, $04, $03, $04, $04, $05
-                        .byte $02, $03, $03, $04, $03, $04, $04, $05
-                        .byte $03, $04, $04, $05, $04, $05, $05, $06
-                        .byte $02, $03, $03, $04, $03, $04, $04, $05
-                        .byte $03, $04, $04, $05, $04, $05, $05, $06
-                        .byte $03, $04, $04, $05, $04, $05, $05, $06
-                        .byte $04, $05, $05, $06, $05, $06, $06, $07
-                        .byte $02, $03, $03, $04, $03, $04, $04, $05
-                        .byte $03, $04, $04, $05, $04, $05, $05, $06
-                        .byte $03, $04, $04, $05, $04, $05, $05, $06
-                        .byte $04, $05, $05, $06, $05, $06, $06, $07
-                        .byte $03, $04, $04, $05, $04, $05, $05, $06
-                        .byte $04, $05, $05, $06, $05, $06, $06, $07
-                        .byte $04, $05, $05, $06, $05, $06, $06, $07
-                        .byte $05, $06, $06, $07, $06, $07, $07, $08
+chip_ready:
+                        ; Step 4: Disable interrupts (using INT0EN and INT1EN).
+                        ; The proper interrupts will be enabled when the PHY/MAC are turned up.
+                        lda #0
+                        sta ETH_INT0EN
+                        sta ETH_INT1EN
+
+                        ; Init our ZP region.
+                        ldx #$7f
+                        lda #0
+clear_byte:
+                        sta $80,x
+                        dex
+                        bpl clear_byte  ; stop when X hits $FF
+
+                        ; Load firmware image from flash.
+                        ; Each bank is separately compressed.
+                        lda #0
+                        sta $90 ; this will be our placeholder for the bank #
+                        ; Start at the beginning...
+                        ;lda #0
+                        sta ETH_FLASHADDRL
+                        ;lda #0
+                        sta ETH_FLASHADDRH
+                        lda ETH_FLASHAUTORD
+                        bne commence
+                        ; no firmware, abort!
+                        plp
+                        rts
+commence:
+                        sta $91 ; the number of banks to read
+load_bank:
+                        lda #<$D100
+                        sta $80 ; dest low byte
+                        lda #>$D100
+                        sta $81 ; dest high byte
+                        jsr INFLATE
+                        
+                        dec $91
+                        bne load_bank
+done_uncompressing:
+                        ; Restore system IRQs, if they were enabled before.
+                        plp
+
+                        ; Lastly, register our PBI device.
+                        lda DEVMASK
+                        ora NDEVREQ
+                        sta DEVMASK
+                        ; Add our device to HATABS.
+                        ldx #DEVICE_NAME
+                        lda #<GENDEV
+                        ldy #>GENDEV
+                        jmp NEWDEV
+                        ; Ignore the result, because frankly, we don't much care.
+.endproc
