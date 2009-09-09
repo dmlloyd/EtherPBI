@@ -2,11 +2,14 @@
                         .define ARP_INC
 
                         .global ARP_UPDATE
+                        .global ARP_WRITE_ENTRY
+                        .global ARP_WRITE_MAC
+                        .global ARP_UPDATE_FLAGS
                         .global ARP_DELETE
                         .global ARP_DELETE_ENTRY
                         .global ARP_LOOKUP
-                        .global ARP_WRITE_ENTRY
-                        .global ARP_WRITE_MAC
+                        .global ARP_CLEAR
+                        .global ARP_DELETE_AGE
 
                         .global ARP_TABLE
                         
