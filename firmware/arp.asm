@@ -69,17 +69,17 @@ no_match:
                         ; Out:  X register = the entry index
                         ;
                         ; update age and MAC address.
-                        lda MAC1+0
+                        lda MACADDR1+0
                         sta ARP_TAB_MAC0,x
-                        lda MAC1+1
+                        lda MACADDR1+1
                         sta ARP_TAB_MAC1,x
-                        lda MAC1+2
+                        lda MACADDR1+2
                         sta ARP_TAB_MAC2,x
-                        lda MAC1+3
+                        lda MACADDR1+3
                         sta ARP_TAB_MAC3,x
-                        lda MAC1+4
+                        lda MACADDR1+4
                         sta ARP_TAB_MAC4,x
-                        lda MAC1+5
+                        lda MACADDR1+5
                         sta ARP_TAB_MAC5,x
                         lda ARP_TAB_FLAGS,x
                         ora #%11000000  ; mark entry as "complete"
@@ -211,7 +211,7 @@ found:                  tya
                         cmp ARP_TAB_AGE,x   ; Target age - ARP clock - Entry timestamp -> P
                         beq expired         ; <= 0 means expired, >0 means OK; can't use carry because we might have wrapped
                         bpl next
-                        jsr ARP_DELETE_ENTRY
+expired:                jsr ARP_DELETE_ENTRY
                         bpl check           ; If the table was compacted, check the new entry.  Otherwise,
                                             ; an entry is rechecked.  Oh well.
                         rts                 ; Else, the table is now empty so short-circuit the whole deal.
