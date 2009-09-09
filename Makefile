@@ -37,4 +37,4 @@ deflater: $(DEF_OFILES)
 .SUFFIXES: .asm .obj .c .o
 
 clean:
-	rm -rf *.img *.cmp $(BR_OFILES) $(FW_OFILES) $(DEF_OFILES) deflater */*.map */*.dbg
+	rm -rf *.img *.cmp $(BR_OFILES) $(FW_OFILES) $(DEF_OFILES) deflater */*.map */*.dbg */*.lst
