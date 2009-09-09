@@ -1,5 +1,4 @@
 
-
                         .include "regs.inc"
                         .include "arp.inc"
 
@@ -7,7 +6,7 @@
 
                         ;
                         ; Update or add an ARP table entry.  If the IP address is already in the table, that entry is
-                        ; returned; otherwise it is added unless the table is full.  The
+                        ; returned unchanged; otherwise a new entry is added, unless the table is full.  The
                         ; new entry is marked as "incomplete"; to complete it, call ARP_WRITE_MAC after this method.
                         ;
                         ; In:   IPADDR1 = the IP address
@@ -18,50 +17,30 @@ ARP_UPDATE:
                         ; Matching rules:
                         ;    If the IP matches, replace the entry and update the age.
                         ;    If no match, add an entry.
-                        ;    If there are no open slots, replace the oldest entry.
-                        lda #$ff
-                        sta t1          ; the first free slot we find
-                        ldx ARP_LAST
-@check_slot:
-                        lda ARP_TAB_FLAGS,x
-                        bpl @is_blank
-
-@try_match:             ; Now, compare the full IP address, checking the least likely to match first.
-                        lda IPADDR1+0
-                        cmp ARP_TAB_IPADDR0,x
-                        bne @try_next
-                        lda IPADDR1+1
-                        sbc ARP_TAB_IPADDR1,x
-                        lda IPADDR1+2
-                        sbc ARP_TAB_IPADDR2,x
-                        lda IPADDR1+3
-                        sbc ARP_TAB_IPADDR3,x
-                        beq ARP_WRITE_MAC
-                        bne @try_next   ; TODO update ages in t2 and t3...
-
-                        ; the entry was blank; remember it just in case
-@is_blank:              stx t1
-@try_next:              dex
-                        bpl @check_slot
-                        ; not found; try to add it
-                        ldx t1
-                        bpl ARP_WRITE_ENTRY
-                        ; no free entries; extend the table
-                        ldx ARP_LAST
-                        inx
-                        cpx #ARP_TABLE_SIZE
-                        bne @extend
-                        ; table is maxed out; fail
-@full:                  ldx #$ff
+                        ;    If no slots are open and the table is full, fail.
+                        jsr ARP_LOOKUP
+                        bmi @no_match
+                        ; Found an existing match!  Return it.
+@rts:
                         rts
-@extend:                stx ARP_LAST
+@no_match:
+                        ; No matches found; see if there's an open slot we can take
+                        ldx t1
+                        bpl ARP_WRITE_ENTRY     ; Found a free slot; fill it.
+                        ; No free slots; try to grow the table.
+                        lda ARP_LAST
+                        cmp #ARP_TABLE_SIZE-1
+                        beq @rts ; table is full (X still holds $FF from the ldx t1 above)
+                        ; Add the free slot, write it back
+                        tax
+                        inx
+                        stx ARP_LAST
                         ;jmp ARP_WRITE_ENTRY
 
                         ;
-                        ; Overwrite an ARP table entry.
+                        ; Overwrite an ARP table entry and mark it as "valid" and "incomplete".
                         ;
                         ; In:   IPADDR1 = the IP address
-                        ;       MACADDR1 = the MAC address
                         ;       X register = the entry index
                         ; Out:  X register = the entry index
                         ;
@@ -100,10 +79,19 @@ ARP_WRITE_MAC:          lda MAC1+0
                         sta ARP_TAB_MAC5,x
                         lda ARP_TAB_FLAGS,x
                         ora #%11000000  ; mark entry as "complete"
+
+                        ;
+                        ; Update the flags of an ARP table entry, and update its
+                        ; age as well.
+                        ;
+                        ; In:   A register = the flags to write
+                        ;       X register = the entry index
+                        ; Out:  X register = the entry index
+                        ;
 ARP_UPDATE_FLAGS:       sta ARP_TAB_FLAGS,x
                         lda ARP_AGE
                         sta ARP_TAB_AGE,x
-                        rts
+ARP_RTS:                rts
 
                         ;
                         ; Delete an ARP table entry by IP address.
@@ -113,30 +101,28 @@ ARP_UPDATE_FLAGS:       sta ARP_TAB_FLAGS,x
                         ;       S flag = set if none matched.
                         ;
 ARP_DELETE:             jsr ARP_LOOKUP
-                        bmi ARP_DELETE_RTS
+                        bmi ARP_RTS
                         ;jmp ARP_DELETE_ENTRY
 
                         ;
                         ; Delete an ARP table entry.
                         ;
                         ; In:   X register = the entry index
-                        ; Out:  X register = the entry index
+                        ; Out:  X register = the deleted entry, or if the table was compacted, the index of the
+                        ;       new last entry, or $ff if the table was completely truncated.
                         ;
 ARP_DELETE_ENTRY:       lda #0
                         sta ARP_TAB_FLAGS,x
                         ; If it's the last entry, compact the table
                         cpx ARP_LAST
-                        bne ARP_DELETE_RTS
-                        txa
-                        tay
-                        ; Remove all trailing empty entries
-@next:                  dey
-                        bmi @done   ; <0 means the table is empty
-                        lda ARP_TAB_FLAGS,y
-                        bne @done   ; this entry is occupied
+                        bne @done
+                        
+@next:                  dex
+                        bmi @update     ; if that's the end, the table is empty
+                        lda ARP_TAB_FLAGS,x
                         beq @next
-@done:                  sty ARP_LAST
-ARP_DELETE_RTS:         rts
+@update:                stx ARP_LAST
+@done:                  rts
 
                         ;
                         ; Locate the ARP entry for an IP address.
@@ -144,16 +130,23 @@ ARP_DELETE_RTS:         rts
                         ; In:   IPADDR1 = the IP address to look up
                         ; Out:  X register = ARP table entry, or $FF if none matched.
                         ;       S flag = set if none matched.
-                        ;       t1 = an open slot, or $FF if there are none.
-                        ;       t3 = the oldest slot, or $FF if there were no slots.
+                        ;       t1 = open slot, if none matched; $FF if none are open.
                         ;
 ARP_LOOKUP:
-                        ldx ARP_LENGTH
-@try_next:              dex
+                        ldx #$ff
+                        stx t1
+                        ldx ARP_LAST
                         bpl @done
-                        lda ARP_TAB_FLAGS,x     ; check only complete entries
-                        and #%01000000
-                        beq @try_next
+                        lda ARP_TAB_FLAGS,x     ; check only valid entries
+                        bne @valid
+@empty:
+                        stx t1
+@try_next:
+                        dex
+                        bmi @done
+                        lda ARP_TAB_FLAGS,x
+                        beq @empty
+@valid:
                         lda IPADDR1+3
                         cmp ARP_TAB_IPADDR3,x
                         bne @try_next
@@ -164,6 +157,7 @@ ARP_LOOKUP:
                         lda IPADDR1+2
                         sbc ARP_TAB_IPADDR2,x
                         bne @try_next
+                        ; match! :D
 @done:                  rts
 
                         ;
