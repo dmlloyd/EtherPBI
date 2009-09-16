@@ -6,9 +6,10 @@
 
                         ;; Start at boot rom area at $D800
                         .segment "HEADER"
+                        .org $D800
                         
                         ;; Checksum (NOT USED)
-                        .byte 0, 0
+                        .word 0
                         
                         ;; Version number (NOT USED)
                         .byte $01

@@ -6,6 +6,7 @@
 
                         .segment "IRQ"
 
+
                         ;
                         ; Handle IRQ.
                         ;
@@ -21,22 +22,22 @@ IRQ:
                         tya
                         pha
 
-                        ; First check for a new packet.
-                        ; This is the only interrupt from INT0, so clear it right away.
+pkt_check:
+                        ; First check for an eth interrupt.
                         lda ETH_INT0
                         and #%00000001  ; RXINT
                         ; Receive the packet, then recheck.
-                        beq @no_recv
+                        beq check_timeout
                         jsr RECEIVE
-                        jmp IRQ
-@no_recv:
+                        jmp pkt_check
+check_timeout:
                         ; Next check for timeouts.
                         lda VIA_INT
                         and #%00100000
-                        bne @done
+                        bne done
                         jsr TIMEOUT
-                        jmp IRQ
-@done:
+                        jmp pkt_check
+done:
                         lda #0
                         sta ETH_RXCN    ; enable receiver
                         pla
@@ -45,7 +46,6 @@ IRQ:
                         tax
                         pla
                         rti
-
 
                         ;
                         ; Receive an incoming packet.
@@ -220,6 +220,10 @@ RECEIVE_ARP_REQUEST:
                         ; Verify that the request is for our IP address.  We could use
                         ; the info to populate our table either way, but it's better to keep the
                         ; table as small as possible.
+                        ;
+                        ; If the request is not for our IP address, check to see whether the associated
+                        ; IP address appears in our ARP cache.  If so, update the entry just to be safe
+                        ; since some hosts will send a gratuitous ARP when their IP address changes.
                         
 
                         ; Update our table with the requestor information from
