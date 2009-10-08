@@ -1,12 +1,6 @@
                         .ifndef ETHER_INC
                         .define ETHER_INC
                         
-                        ;; Memory map:
-                        ;; D100-D1FF (256 bytes): I/O area
-                        ;; D600-D7FF (512 bytes): PBP GP Area
-                        ;; D800-DBFF (1024 bytes): PBP Program memory bank 0
-                        ;; DC00-DFFF (1024 bytes): PBP Program memory bank 1
-                        
                         ETH_BASE        = $D100
                         ;; Current Rx Packet Address (Big-Endian!)
                         ETH_CPADDRH     = ETH_BASE + $21

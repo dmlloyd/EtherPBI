@@ -6,9 +6,10 @@
 
                         ; Interface status.
                         IFSTAT_DOWN = 0
-                        IFSTAT_PHY = 1
-                        IFSTAT_MAC = 2
-                        IFSTAT_IP = 3
+                        IFSTAT_PHY_NEGO = 1
+                        IFSTAT_PHY_UP = 1
+                        IFSTAT_MAC_UP = 2
+                        IFSTAT_IP_UP = 3
 
                         .globalzp IFSTATZ
                         
@@ -50,6 +51,13 @@
                         ;
                         .global NETMASK_TABLE
                         .global HOSTMASK_TABLE
+
+                        ;
+                        ; Parameters
+                        ;
+                        .global RECV_LOW_WATER
+                        .global RECV_HIGH_WATER
+                        .global RECV_OVERRUN
 
                         ;
                         ; Current user settings

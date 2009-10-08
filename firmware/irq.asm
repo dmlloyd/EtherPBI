@@ -3,6 +3,8 @@
                         .include "regs.inc"
                         .include "netequ.inc"
                         .include "arp.inc"
+                        .include "tables.inc"
+                        .include "via.inc"
 
                         .segment "IRQ"
 
@@ -21,6 +23,13 @@ IRQ:
                         pha
                         tya
                         pha
+crit_check:
+                        lda CRITIC
+                        beq pkt_check
+                        ; Critical section!  Disable the receiver.
+                        lda #%00001000  ; RXINH, shut down receiver
+                        sta ETH_RXCN
+                        bne done        ; always true
 
 pkt_check:
                         ; First check for an eth interrupt.
@@ -48,6 +57,11 @@ done:
                         rti
 
                         ;
+                        ; Process timeout.
+                        ;
+TIMEOUT:                rts
+
+                        ;
                         ; Receive an incoming packet.
                         ;
 RECEIVE:
@@ -68,28 +82,29 @@ RECEIVE:
                         ; Check to see if we overran.
                         lda ETH_RXFIFOSTA
                         and #%00000010
-                        beq @ok
+                        beq DO_RECEIVE
                         ; aw shit.  We overran.  Just dump em all and start over.
                         lda #%00000001  ; RXCLEAR
                         sta ETH_RXCN
                         ; Increment the counters so that the operator can diagnose the issue.
                         inc RECV_OVERRUN
-                        bne @done
+                        bne DONE
                         inc RECV_OVERRUN+1
-@done:                  rts
+DONE:                  
+                        rts
 
                         ; Check to see if we hit the high-water mark.
-@ok:                    
+DO_RECEIVE:                    
                         ldx ETH_TLBVALID
                         ; Count the number of 1 bits using our big ol lookup table.
                         lda BITCOUNT_TABLE,x
-                        cmp #RECV_HIGH_WATER
+                        cmp RECV_HIGH_WATER
                         bcc @below_high_water
                         ; X >= high-water mark...
                         lda #%00001000  ; RXINH, shut down receiver until we clear some space
                         sta ETH_RXCN
                         bne @resume     ; always true
-@below_high_water:      cmp #RECV_LOW_WATER
+@below_high_water:      cmp RECV_LOW_WATER
                         bcs @resume
                         ; X < low-water mark
                         lda #%00000000  ; !RXINH, resume receiving
@@ -101,17 +116,19 @@ RECEIVE:
                         ; or maybe instead:
                         ; ldx ETH_TLBVALID
                         ; inx ; set Z if all the slots were full
-                        beq @valid
-@invalid:
+                        beq DO_VALID
+DO_INVALID:
                         inc RECV_INVALID
-                        bne @done
+                        bne DONE
                         inc RECV_INVALID+1
-skip:                  lda #%00000010  ; RXSKIP the invalid packet
+DO_RXSKIP:              
+                        lda #%00000010  ; RXSKIP the invalid packet
                         sta ETH_RXCN
                         rts
-@valid:                 ; Check that the packet is OK
+DO_VALID:
+                        ; Check that the packet is OK
                         lda ETH_CPINFOL
-                        bmi @invalid
+                        bmi DO_INVALID
                         ; Broadcast packets are not subject to the dest addr check.
                         lda ETH_CPINFOH
                         and #%00000010  ; BCAST
@@ -131,7 +148,7 @@ skip:                  lda #%00000010  ; RXSKIP the invalid packet
                         bne @next_dmac_in
                         cmp USER_MAC_ADDR+5
                         ; no match? then skip the packet
-                        bne skip
+                        bne DO_RXSKIP
 
 @next_mac_in:           ; Get the source MAC address
                         ldy #256-6
@@ -143,12 +160,12 @@ skip:                  lda #%00000010  ; RXSKIP the invalid packet
                         lda ETH_RXAUTOREAD
                         cmp #$08
                         ; not ICMP or IP? skip it
-                        bne skip
+                        bne DO_RXSKIP
                         lda ETH_RXAUTOREAD
                         cmp #<ETHERTYPE_IP
                         beq RECEIVE_IP
                         cmp #<ETHERTYPE_ARP
-                        bne skip
+                        bne DO_RXSKIP
                         ;jmp RECEIVE_ARP
 
                         
@@ -169,13 +186,13 @@ RECEIVE_ARP:            ; Read in the ARP packet data
                         ; PLEN must == $04
                         lda ETH_RXAUTOREAD
                         sbc #4
-                        bne skip   ; if any of that stuff didn't match
+                        bne DO_RXSKIP   ; if any of that stuff didn't match
                         ; Next is OPER
                         ldx ETH_RXAUTOREAD
                         dex
                         beq RECEIVE_ARP_REQUEST
                         dex
-                        bne skip   ; unsupported op
+                        bne DO_RXSKIP   ; unsupported op
                         ;jmp RECEIVE_ARP_REPLY
 
                         ; Receive an ARP reply

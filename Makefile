@@ -30,4 +30,4 @@ deflater: $(DEF_OFILES)
 .SUFFIXES: .asm .obj .c .o
 
 clean:
-	rm -rf *.img $(BR_OFILES) $(FW_OFILES) */*.map */*.dbg */*.lst
+	rm -rf *.img */*.obj */*.map */*.dbg */*.lst
