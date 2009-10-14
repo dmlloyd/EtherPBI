@@ -180,6 +180,8 @@
     IP_STATE_UP     =   1
     ;IP_STATE_DHCP  =   2
 
+    .global IP_STATE
+
     ; IP procedures
     .global IP_UP
     .global IP_DOWN

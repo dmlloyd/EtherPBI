@@ -19,16 +19,18 @@ PHY_MODE:
     ;
     ; PHY_UP - Bring up the ethernet PHY.
     ;
-    ; In:   -
-    ; Out:  -
+    ; In:   I flag = set
+    ; Out:  Y register = status; 1 = success, $80-FF = error
     ;
 PHY_UP:
     lda PHY_STATE
-    beq @exit
+    ;cmp #PHY_STATE_DOWN
+    bne @exit   ; PHY is already up!
     
-;; Step 5: Initialize the physical layer. (15.7)
-;; Step 5.1: If auto-negotiation is used, kick off the synch procedure
-;; Step 5.2: Disable the PHY layer
+    ;; Step 5: Initialize the physical layer. (15.7)
+    ;; Step 5.1: If auto-negotiation is used, kick off the synch procedure
+    
+    ;; Step 5.2: Disable the PHY layer
     lda #0
     sta ETH_PHYCN
 ;; Step 5.3: Configure desired options
@@ -57,7 +59,4 @@ PHY_UP:
 
 ;; Step 6: Enable the appropriate LEDs.
 
-;; Restore interrupt status.
-@exit:
-    plp
     rts

@@ -77,24 +77,28 @@ MAC_ADDRESS_HW5:
     MACAD1 = $11
     MACAD2 = $12
 
+    ; Macro to write a 16-bit value to one of the MAC INDIRECT registers.
+    ; Supports immediate or absolute (big-endian) arguments.
     .macro write_mac_ind reg, value
-    lda #reg
-    sta ETH_MACADDR
-    lda #<value
-    sta ETH_MACDATAH
-    lda #>value
-    sta ETH_MACDATAL
-    sta ETH_MACRW
-    .endmacro
-
-    .macro write_mac_ind_mem reg, highaddr, lowaddr
-    lda #reg
-    sta ETH_MACADDR
-    lda highaddr
-    sta ETH_MACDATAH
-    lda lowaddr
-    sta ETH_MACDATAL
-    sta ETH_MACRW
+        .if (.match (.left (1, {value}), #))
+            ; immediate mode...
+            lda #reg
+            sta ETH_MACADDR
+            lda #<(.right (.tcount ({value})-1, {value}))
+            sta ETH_MACDATAH
+            lda #>(.right (.tcount ({value})-1, {value}))
+            sta ETH_MACDATAL
+            sta ETH_MACRW
+        .else
+            ; absolute mode (BIG-ENDIAN!)
+            lda #reg
+            sta ETH_MACADDR
+            lda value
+            sta ETH_MACDATAH
+            lda value+1
+            sta ETH_MACDATAL
+            sta ETH_MACRW
+        .endif
     .endmacro
 
     ;
@@ -139,19 +143,19 @@ MAC_UP:
     ;; Step 7: Initialize the MAC (14.1)
     lda PHY_MODE
     bpl @half_duplex
-    write_mac_ind MACCF, $40B3
-    write_mac_ind IPGT, $0015
+    write_mac_ind MACCF, #$40B3
+    write_mac_ind IPGT, #$0015
     bne @written        ; always true
 @half_duplex:
-    write_mac_ind MACCF, $4012
-    write_mac_ind IPGT, $0012
+    write_mac_ind MACCF, #$4012
+    write_mac_ind IPGT, #$0012
 @written:
-    write_mac_ind IPGR, $0C12
-    write_mac_ind MAXLEN, $05EE
-    write_mac_ind_mem MACAD0, MAC_ADDRESS0, MAC_ADDRESS1
-    write_mac_ind_mem MACAD1, MAC_ADDRESS2, MAC_ADDRESS3
-    write_mac_ind_mem MACAD2, MAC_ADDRESS4, MAC_ADDRESS5
-    write_mac_ind MACCN, $0001
+    write_mac_ind IPGR, #$0C12
+    write_mac_ind MAXLEN, #$05EE
+    write_mac_ind MACAD0, MAC_ADDRESS0
+    write_mac_ind MACAD1, MAC_ADDRESS2
+    write_mac_ind MACAD2, MAC_ADDRESS4
+    write_mac_ind MACCN, #$0001
 
     ;; Step 8: Configure the receive filter. (12.4)
     lda #0              ; Disable multicast
@@ -159,6 +163,9 @@ MAC_UP:
     sta ETH_RXHASHL
     lda #%00001101      ; Disable Runt, FCS Error, and Multicast; enable Broadcast
     sta ETH_RXFILT
+    
+    lda #MAC_STATE_UP
+    sta MAC_STATE
 
     ldy #1          ; Report status OK
     rts
@@ -180,7 +187,9 @@ MAC_DOWN:
     jsr IP_DOWN
     bmi @ret    ; error is in Y
 @ip_is_down:
-    write_mac_ind MACCN, $0000
+    write_mac_ind MACCN, #$0000
+    lda #MAC_STATE_DOWN
+    sta MAC_STATE
 @done:
     ldy #1
 @ret:
