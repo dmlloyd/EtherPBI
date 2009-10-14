@@ -1,10 +1,9 @@
 
     .include "sysequ.inc"
-    .include "ether.inc"
+    .include "cp2200.inc"
+    .include "ether_cio.inc"
 
     ;; Memory map:
-    ;; 0080-00BF (64 bytes): High Low ZP area
-    ;; 00C0-00FF (64 bytes): High High ZP area
     ;; D100-D1FF (256 bytes): I/O area
     ;;    D100-D17F: CP2200
     ;;    D180-D18F: VIA
@@ -83,6 +82,20 @@ CLOSEV:
     jmp CLOSE
 
 READV:
+    sta CIO_BANK
+    jmp READ
+    
+WRITEV:
+    sta CIO_BANK
+    jmp WRITE
+
+STATUSV:
+    sta CIO_BANK
+    jmp STATUS
+
+SPECIALV:
+    sta CIO_BANK
+    jmp SPECIAL
 
 
 OPEN:

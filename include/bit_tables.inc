@@ -50,7 +50,6 @@ HOSTMASK_TABLE:
     ; lda BIT_TABLE-8,x     ; for byte 1
     ; lda BIT_TABLE-16,x    ; for byte 2
     ; lda BIT_TABLE-24,x    ; for byte 3
-
     .byte $00, $00, $00, $00, $00, $00, $00, $00
     .byte $00, $00, $00, $00, $00, $00, $00, $00
     .byte $00, $00, $00, $00, $00, $00, $00, $00
