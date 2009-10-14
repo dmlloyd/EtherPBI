@@ -173,7 +173,13 @@
     IP_PROTO_TCP    =   $06
     IP_PROTO_UDP    =   $11
 
+    IP_STATE_DOWN   =   0
+    IP_STATE_UP     =   1
+    ;IP_STATE_DHCP  =   2
+
     ; IP procedures
+    .global IP_UP
+    .global IP_DOWN
 
     ; IP preferences
 
@@ -296,3 +302,7 @@
     ; DNS preferences
     .global USER_DNS_IP_ADDR
     
+    ; DNS procedures
+    ; Resolve the DNS name given in the selected IOCB.  Translates a file name into the four-byte IP address.  Blocking operation.
+    ; DNS lookups are NOT cached.
+    .global DNS_RESOLVE
