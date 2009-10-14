@@ -54,7 +54,7 @@ ARP_WRITE_ENTRY:
     sta ARP_TAB_IPADDR3,x
     lda #%10000000
     bne ARP_UPDATE_FLAGS    ; always true
-    ;jmp ARP_WRITE_MAC
+    ; not reached
 
 
     ;
