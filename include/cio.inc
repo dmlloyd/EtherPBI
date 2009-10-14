@@ -1,4 +1,18 @@
 
+    ;; =======================
+    ;;  N: Device
+    ;; =======================
+
+    ;; =======================
+    ;;  R: Device - RS232 Emu
+    ;; =======================
+
+    ;; =======================
+    ;;  H: Device - TCPFS
+    ;; =======================
+
+
+
     ;; CIO routines
     
     CIO_BANK = $D640 + 0 ; TODO bank ID of CIO bank
@@ -27,17 +41,18 @@
     ;     TCP socket:
     ;       unbound:
     ;         OPEN #1,12,0,"N:"
-    ;       bound, random IP and port, unconnected:
-    ;         OPEN #1,12,0,"N:!"
-    ;       bound & connected, random src IP and port:
+    ;       bound, random src port, unconnected:
+    ;         OPEN #1,12,0,"N:%0"
+    ;         OPEN #1,12,0,"N:!%";CHR$(0);CHR$(0)
+    ;       bound & connected, random src port:
     ;         OPEN #1,12,0,"N:WWW.FLURG.COM:80"
     ;       bound & connected, specified src port:
-    ;         OPEN #1,12,0,"N::1234!WWW.FLURG.COM:80"
+    ;         OPEN #1,12,0,"N:%1234:WWW.FLURG.COM:80"
     ;       existing socket attach:
     ;         OPEN #1,4+8+16,ID,"N:"
     ;       server:
     ;         OPEN #1,32,0,"N:":REM CREATE LISTENER
-    ;         XIO 48,#1,0,0,"N::80":REM BIND
+    ;         XIO 48,#1,0,0,"N:%80":REM BIND
     ;         OPEN #2,28,1,"N:":REM ACCEPT FROM #1
     ;         XIO 38,#2,208,ASC("?"),"N:":REM TRANSLATE
     ;         PRINT #2;"HTTP/1.0 200 OK"

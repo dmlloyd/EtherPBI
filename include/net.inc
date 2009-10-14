@@ -67,7 +67,7 @@
     .global MAC_STATS_SEND_DROPPED
 
     ; MAC procedures
-    ; Bring up the MAC layer.  Also brings up PHY if it is down.
+    ; Bring up the MAC layer.  Also brings up PHY if it is down.  Will perform validation first.
     .global MAC_UP
     ; Turn off the MAC layer.  Brings down IP if it is up.
     .global MAC_DOWN
