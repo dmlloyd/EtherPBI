@@ -1,5 +1,5 @@
     .include "sysequ.inc"
-    .include "ether_cio.inc"
+    .include "cio.inc"
     
     .segment "CIO_REGS"
 
@@ -35,16 +35,22 @@ OPEN:
     lda ICHIDZ
     ; See if it's a net device request
     cmp #'N'
-    beq net_open
+    beq do_net_open
     ; See if it's a request for an emulated RS232 device
     cmp #'R'
-    beq rs232_open
-    ; See if it's a request for our TCPFS device
+    beq do_rs232_open
+    ; See if it's a request for our NETCIO device
     cmp #'H'
-    beq tcpfs_open
+    beq do_netcio_open
     ; not ours, return
     clc
     rts
+do_net_open:
+    jmp NET_OPEN
+do_rs232_open:
+    jmp RS232_OPEN
+do_netcio_open:
+    jmp NETCIO_OPEN
 
     ; Handle open of virtual R: device.
 rs232_open:
@@ -59,10 +65,6 @@ rs232_open:
     ldy #EDNACK
     sec
     rts
-
-net_open:
-    
-
 
 ok:
     ldy #1

@@ -3,19 +3,38 @@
     ;;  N: Device
     ;; =======================
 
+    .global NET_OPEN
+    .global NET_CLOSE
+    .global NET_READ
+    .global NET_WRITE
+    .global NET_STATUS
+    .global NET_SPECIAL
+
     ;; =======================
     ;;  R: Device - RS232 Emu
     ;; =======================
 
+    .global RS232_OPEN
+    .global RS232_CLOSE
+    .global RS232_READ
+    .global RS232_WRITE
+    .global RS232_STATUS
+    .global RS232_SPECIAL
+
     ;; =======================
-    ;;  H: Device - TCPFS
+    ;;  H: Device - NETCIO
     ;; =======================
 
+    .global NETCIO_OPEN
+    .global NETCIO_CLOSE
+    .global NETCIO_READ
+    .global NETCIO_WRITE
+    .global NETCIO_STATUS
+    .global NETCIO_SPECIAL
 
-
-    ;; CIO routines
-    
-    CIO_BANK = $D640 + 0 ; TODO bank ID of CIO bank
+    ;; =======================
+    ;;  General CIO
+    ;; =======================
 
     .global OPEN
     .global CLOSE
@@ -23,6 +42,8 @@
     .global WRITE
     .global STATUS
     .global SPECIAL
+
+
 
     ;; CIO data
     

@@ -1,17 +1,29 @@
 
 
-;; Ethernet interface module
+;; Ethernet PHY interface module
 
     .include "net.inc"
     .include "regs.inc"
     .include "sysequ.inc"
     .include "cp2200.inc"
 
-ETHER_PHY_START:
-;; Disable interrupts.
-    php
-    sei
-    lda IFSTATZ
+    .segment "PHY_VARS"
+
+PHY_STATE:
+    .res 1
+PHY_MODE:
+    .res 1
+
+    .segment "PHY"
+
+    ;
+    ; PHY_UP - Bring up the ethernet PHY.
+    ;
+    ; In:   -
+    ; Out:  -
+    ;
+PHY_UP:
+    lda PHY_STATE
     beq @exit
     
 ;; Step 5: Initialize the physical layer. (15.7)
@@ -49,16 +61,3 @@ ETHER_PHY_START:
 @exit:
     plp
     rts
-
-ETHER_MAC_START:
-    php
-    sei
-    jsr ETHER_PHY_START
-
-;; Step 7: Initialize the MAC (14.1)
-
-;; Step 8: Configure the receive filter. (12.4)
-
-    plp
-    rts
-

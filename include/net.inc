@@ -19,6 +19,9 @@
     PHY_STATE_UP = 2
 
     .global PHY_STATE
+    ; PHY mode.
+    ; Bit 7: 1 = full-duplex, 0 = half-duplex
+    .global PHY_MODE
 
     ; Bring up the PHY layer.
     .global PHY_UP
