@@ -43,17 +43,16 @@
     .global STATUS
     .global SPECIAL
 
-
+    ;; TODO - make dynamic...
+    CIO_BANK    = 0
 
     ;; CIO data
     
 
     ;; CIO equates
 
-    ; CIO operations
-    ;   Directories:
-    ;     ARP cache:
-    ;       OPEN #1,6,0,"N:ARP"
+    ; CIO N: operations
+    ;   Reports:
     ;     Log:
     ;       OPEN #1,6,0,"N:LOG"
     ;     Status:
@@ -63,12 +62,16 @@
     ;       unbound:
     ;         OPEN #1,12,0,"N:"
     ;       bound, random src port, unconnected:
-    ;         OPEN #1,12,0,"N:%0"
-    ;         OPEN #1,12,0,"N:!%";CHR$(0);CHR$(0)
+    ;         OPEN #1,12,0,"N:":REM CREATE
+    ;         XIO 48,#1,0,0,"N:0":REM BIND TO RANDOM PORT
+    ;         XIO 48,#1,0,0,"N:!";CHR$(0);CHR$(0):REM BIND TO RANDOM PORT
     ;       bound & connected, random src port:
     ;         OPEN #1,12,0,"N:WWW.FLURG.COM:80"
+    ;         OPEN #1,12,0,"N:!";CHR$(192);CHR$(168);CHR$(0);CHR$(1);CHR$(0);CHR$(80):REM 192.168.1.1:80
     ;       bound & connected, specified src port:
-    ;         OPEN #1,12,0,"N:%1234:WWW.FLURG.COM:80"
+    ;         OPEN #1,12,0,"N:":REM CREATE
+    ;         XIO 48,#1,0,0,"N:1234":REM BIND TO SRC PORT
+    ;         XIO 49,#1,0,0,"N:WWW.FLURG.COM:80":REM CONNECT
     ;       existing socket attach:
     ;         OPEN #1,4+8+16,ID,"N:"
     ;       server:
@@ -83,17 +86,27 @@
     ;         CLOSE #2
     
 
-    ; OPEN
+    ; OPEN N:
     ;   ICAX1 values:
     ;     bit 0: Concurrent mode emulation
+    ;     bit 1: Report
+    ;     bit 2: Read
+    ;     bit 3: Write
+    ;     bit 4: Accept (listener IOCB specified in AX2)
+    ;     bit 5: Listen
+    ;     bit 6-7: 00=TCP, 01=UDP, 10=Raw IP, 11=Raw Ethernet
+    ;   ICAX2 = IOCB of server socket to accept from
+    
+
+    ; OPEN H:
+    ;   ICAX1 values:
+    ;     bit 0: Append
     ;     bit 1: Directory
     ;     bit 2: Read
     ;     bit 3: Write
-    ;     bit 4: Socket attach (use with accept).
-    ;       when a server socket is closed, its unattached sockets will be closed too!
-    ;     bit 5: Listen
-    ;   ICAX2 = IOCB of server socket to accept from
+
     
+
 
     ; XIO operations
 
@@ -179,9 +192,9 @@
 
     XIO_BLOCKING    = $2A ; Set blocking mode.
     ; ICAX1:
-    ;   bit 0: Input/accept blocking; 0 = block, 1 = nonblock
-    ;       - Non-blocking input does not support READ RECORD
-    ;   bit 1: Output blocking; 0 = block, 1 = nonblock
+    ;   bit 0: Input/accept blocking; 0 = blocking, 1 = nonblocking
+    ;       * Non-blocking input does not support "READ RECORD"
+    ;   bit 1: Output blocking; 0 = blocking, 1 = nonblocking
     ;
 
     ; Bind to the given IP address.
@@ -199,34 +212,15 @@
     ; Socket is bound to *:0 if it is not already bound.
     XIO_SOCK_CONNECT= $31
 
-    ; Add a static ARP cache entry.
-    ; Text arg format: xxx.xxx.xxx.xxx[/nm] xx:xx:xx:xx:xx:xx
-    ; (IP address and optional netmask followed by MAC address)
-    ; Data buffer format (must be at least 11 bytes):
-    ; bytes 0-3: IP address in network order
-    ; byte 4: Netmask bits (0-31)
-    ; bytes 5-11: MAC address in network order
-    XIO_ARP_ADD     = $40
-
-    ; Delete an ARP cache entry.  Only an exact match is removed.
-    ; Text arg format: xxx.xxx.xxx.xxx[/nm] xx:xx:xx:xx:xx:xx
-    ; (IP address and optional netmask followed by MAC address)
-    ; Data buffer format (must be at least 11 bytes):
-    ; bytes 0-3: IP address in network order
-    ; byte 4: Netmask bits (0-31)
-    ; bytes 5-11: MAC address in network order
-    XIO_ARP_DELETE  = $41
-    ; Delete entire ARP cache.
-    XIO_ARP_CLEAR   = $42
-
-
-    ; Execute an ARP announcement.
-    XIO_ARP_ANN     = $43
-    
-    
-
+    ; Set iface IP address.
+    ; Buffer format:
+    ;     bytes 0-3: IP address in network order
+    ;     byte 4: Netmask length in bits
     XIO_IP_SET_ADDR = $50
+
     XIO_IP_SET_GW   = $51
+    
+    XIO_MAC_SET_ADDR    = $52
     
     ; AUX1 codes.
     ; Accept the argument from the filename field in text format rather than from the data buffer.

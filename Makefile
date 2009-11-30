@@ -6,7 +6,7 @@ all: firmware.img
 
 firmware.img: $(OFILES) linker.cfg
 	@echo '     [ ld65 ] ' $< '->' $@
-	@ld65 -vm -m firmware.map -C linker.cfg --dbgfile firmware.dbg -o firmware.img $(FW_OFILES)
+	@ld65 -vm -m firmware.map -C linker.cfg --dbgfile firmware.dbg -o firmware.img $(OFILES)
 
 .asm.obj:
 	@echo '     [ ca65 ] ' $< '->' $@

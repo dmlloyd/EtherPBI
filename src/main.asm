@@ -1,18 +1,15 @@
 
     .include "sysequ.inc"
-    .include "cp2200.inc"
-    .include "ether_cio.inc"
+    .include "w5100.inc"
+    .include "cio.inc"
 
     ;; Memory map:
     ;; D100-D1FF (256 bytes): I/O area
-    ;;    D100-D17F: CP2200
-    ;;    D180-D18F: VIA
+    ;;    D100-D17F: W5100 bank select bytes
+    ;;    D180-D18F: PBP Program memory bank 1 select
     ;;    D190-D1EF: unused
     ;;    D1FF: PBI select/interrupt register
-    ;; D600-D63F (64 bytes): 
-    ;; D640-D67F (64 bytes): PBP Program memory bank 1 select
-    ;; D680-D6BF (64 bytes): Buffer RAM select - low
-    ;; D6C0-D6FF (64 bytes): Buffer RAM select - high
+    ;; D600-D6FF (256 bytes): W5100 access area
     ;; D700-D7FF (256 bytes): Buffer RAM bank 
     ;; D800-DBFF (1024 bytes): PBP Program memory bank 0
     ;; DC00-DFFF (1024 bytes): PBP Program memory bank 1
@@ -97,30 +94,7 @@ SPECIALV:
     sta CIO_BANK
     jmp SPECIAL
 
-
-OPEN:
-    ;; do open
-    
-    lda #'N'
-    cmp ICHIDZ
-    beq @match
-@nomatch:
-    clc         ; indicate no match
-    rts
-@match:
-    ldx ICDNOZ
-    beq @match2 ; device # not specified, so pick us
-    dex
-    beq @match2 ; we're not selected, it's the next card
-    stx ICDNOZ  ; store decremented device # so next card can have a chance
-    bne @nomatch
-@match2:
-
-
-    sec
-    rts
-
-.proc RESET
+RESET:
     ;
     ; Complete reset procedure.
     ;
@@ -131,78 +105,6 @@ OPEN:
     ; Disable IRQs.
     php
     sei
-    ; From CP2200/1 data sheet 6.2. Reset Initialization...
-    ; Step 1: Wait for reset pin to rise (duh)
-    ; Step 2: Wait for oscillator initialization to complete.
-    ; (we will poll the interrupt status register)
-
-wait0:
-    lda ETH_INT0
-    and #%00001000  ; Oscillator stabilized?
-    bne wait2       ; More quickly than expected!
-wait1:
-    sta WSYNC       ; Don't spam the register, plz
-    lda ETH_INT0
-    and #%00001000  ; Oscillator stabilized?
-    beq wait1
-wait2:
-    ; Step 3: Wait for Self Initialization to complete.
-    ; The INT0 interrupt status register on page 31 should be
-    ; checked to determine when Self Initialization completes.
-    lda ETH_INT0
-    and #%00000100  ; Self-init complete?
-    bne chip_ready  ; Chip is ready
-wait3:
-    sta WSYNC       ; Don't spam...
-    lda ETH_INT0
-    and #%00000100  ; Self-init complete?
-    beq wait3
-
-chip_ready:
-    ; Step 4: Disable interrupts (using INT0EN and INT1EN).
-    ; The proper interrupts will be enabled when the PHY/MAC are turned up.
-    lda #0
-    sta ETH_INT0EN
-    sta ETH_INT1EN
-
-    ; Init our ZP region.
-    ldx #$7f
-    lda #0
-clear_byte:
-    sta $80,x
-    dex
-    bpl clear_byte  ; stop when X hits $FF
-
-    ; Load firmware image from flash.
-    lda #0
-    sta $90 ; this will be our placeholder for the bank #
-    ; Start at the beginning...
-    ;lda #0
-    sta ETH_FLASHADDRL
-    ;lda #0
-    sta ETH_FLASHADDRH
-    lda ETH_FLASHAUTORD
-    bne commence
-    ; no firmware, abort!
-    plp
-    rts
-commence:
-    sta $91 ; the number of banks to read
-load_bank:
-    ldx ETH_FLASHAUTORD ; low count
-    ldy ETH_FLASHAUTORD ; high count
-@l1:
-    lda ETH_FLASHAUTORD
-    sta $D100,x
-    inx
-    bne @l1
-@l2:
-    lda ETH_FLASHAUTORD
-    sta $D200,x
-    inx
-    bne @l2
-    
-
 
 
     ; Restore system IRQs, if they were enabled before.
@@ -216,7 +118,7 @@ load_bank:
     ldx #DEVICE_NAME
     lda #<GENDEV
     ldy #>GENDEV
+    ; Exit via NEWDEV.
     jmp NEWDEV
     ; Ignore the result, because frankly, we don't much care.
-.endproc
 
