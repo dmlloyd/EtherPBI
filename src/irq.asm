@@ -1,9 +1,6 @@
 
     .include "net.inc"
-    .include "regs.inc"
     .include "sysequ.inc"
-    .include "w5100.inc"
-    .include "via.inc"
 
     .segment "IRQ"
 

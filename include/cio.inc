@@ -1,84 +1,64 @@
 
-    ;; =======================
-    ;;  N: Device
-    ;; =======================
+    ;;
+    ;; Bank 0 entry points
+    ;;
+    .global CIO_OPEN
+    .global CIO_CLOSE
+    .global CIO_READ
+    .global CIO_WRITE
+    .global CIO_STATUS
+    .global CIO_SPECIAL
 
-    .global NET_OPEN
-    .global NET_CLOSE
-    .global NET_READ
-    .global NET_WRITE
-    .global NET_STATUS
-    .global NET_SPECIAL
-
-    ;; =======================
-    ;;  R: Device - RS232 Emu
-    ;; =======================
-
-    .global RS232_OPEN
-    .global RS232_CLOSE
-    .global RS232_READ
-    .global RS232_WRITE
-    .global RS232_STATUS
-    .global RS232_SPECIAL
-
-    ;; =======================
-    ;;  H: Device - NETCIO
-    ;; =======================
-
-    .global NETCIO_OPEN
-    .global NETCIO_CLOSE
-    .global NETCIO_READ
-    .global NETCIO_WRITE
-    .global NETCIO_STATUS
-    .global NETCIO_SPECIAL
-
-    ;; =======================
-    ;;  General CIO
-    ;; =======================
-
-    .global OPEN
-    .global CLOSE
-    .global READ
-    .global WRITE
-    .global STATUS
-    .global SPECIAL
-
-    ;; TODO - make dynamic...
-    CIO_BANK    = 0
+    ;;
+    ;; Bank N entry points
+    ;;
+    OPENV           = $DC00
+    CLOSEV          = $DC03
+    READV           = $DC06
+    WRITEV          = $DC09
+    STATUSV         = $DC0C
+    SPECIALV        = $DC0F
 
     ;; CIO data
     
-
-    ;; CIO equates
+    ; Map of CIO device name to handler #.
+    ; Key is any char from 'A' ($40) through 'z' ($7A) (58 bytes).
+    CIO_MAP         = RAM_HI
+    CIO_PARAM1      = RAM_HI + 64
+    CIO_PARAM2      = RAM_HI + 128
+    CIO_PARAM3      = RAM_HI + 192
+    CIO_PARAM4      = RAM_HI + 256
+    CIO_PARAM5      = RAM_HI + 320
+    CIO_PARAM6      = RAM_HI + 384
+    CIO_PARAM7      = RAM_HI + 448
 
     ; CIO N: operations
     ;   Reports:
-    ;     Log:
-    ;       OPEN #1,6,0,"N:LOG"
     ;     Status:
-    ;       OPEN #1,6,0,"N:STA"
+    ;       OPEN #1,6,0,"N:"
     ;   Open types:
     ;     TCP socket:
     ;       unbound:
-    ;         OPEN #1,12,0,"N:"
+    ;         OPEN #1,12,0,"T:"
     ;       bound, random src port, unconnected:
-    ;         OPEN #1,12,0,"N:":REM CREATE
-    ;         XIO 48,#1,0,0,"N:0":REM BIND TO RANDOM PORT
-    ;         XIO 48,#1,0,0,"N:!";CHR$(0);CHR$(0):REM BIND TO RANDOM PORT
+    ;         OPEN #1,12,0,"T:":REM CREATE
+    ;         XIO 48,#1,0,0,"T:0":REM BIND TO RANDOM PORT
+    ;         XIO 48,#1,0,0,"T:!";CHR$(0);CHR$(0):REM BIND TO RANDOM PORT
     ;       bound & connected, random src port:
-    ;         OPEN #1,12,0,"N:WWW.FLURG.COM:80"
-    ;         OPEN #1,12,0,"N:!";CHR$(192);CHR$(168);CHR$(0);CHR$(1);CHR$(0);CHR$(80):REM 192.168.1.1:80
+    ;         OPEN #1,12,0,"T:WWW.FLURG.COM:80"
+    ;         OPEN #1,12,0,"T:!";CHR$(192);CHR$(168);CHR$(0);CHR$(1);CHR$(0);CHR$(80):REM 192.168.1.1:80
     ;       bound & connected, specified src port:
-    ;         OPEN #1,12,0,"N:":REM CREATE
-    ;         XIO 48,#1,0,0,"N:1234":REM BIND TO SRC PORT
-    ;         XIO 49,#1,0,0,"N:WWW.FLURG.COM:80":REM CONNECT
+    ;         OPEN #1,12,0,"T:":REM CREATE
+    ;         XIO 48,#1,0,0,"T:1234":REM BIND TO SRC PORT
+    ;         XIO 49,#1,0,0,"T:WWW.FLURG.COM:80":REM CONNECT
     ;       existing socket attach:
-    ;         OPEN #1,4+8+16,ID,"N:"
+    ;         OPEN #1,4+8+16,ID,"T:"
     ;       server:
-    ;         OPEN #1,32,0,"N:":REM CREATE LISTENER
-    ;         XIO 48,#1,0,0,"N:%80":REM BIND
-    ;         OPEN #2,28,1,"N:":REM ACCEPT FROM #1
-    ;         XIO 38,#2,208,ASC("?"),"N:":REM TRANSLATE
+    ;         OPEN #1,0,0,"T:":REM CREATE LISTENER
+    ;         XIO 48,#1,0,0,"T:80":REM BIND
+    ;         XIO 50,#1,0,0,"T:":REM LISTEN
+    ;         OPEN #2,28,1,"T:":REM ACCEPT FROM #1
+    ;         XIO 38,#2,208,ASC("?"),"T:":REM TRANSLATE
     ;         PRINT #2;"HTTP/1.0 200 OK"
     ;         PRINT #2;"Content-Type: text/html"
     ;         PRINT #2;""
@@ -86,17 +66,16 @@
     ;         CLOSE #2
     
 
-    ; OPEN N:
+    ; OPEN T:
     ;   ICAX1 values:
     ;     bit 0: Concurrent mode emulation
-    ;     bit 1: Report
+    ;     bit 1: Status
     ;     bit 2: Read
     ;     bit 3: Write
     ;     bit 4: Accept (listener IOCB specified in AX2)
-    ;     bit 5: Listen
-    ;     bit 6-7: 00=TCP, 01=UDP, 10=Raw IP, 11=Raw Ethernet
+    ;     bits 5-7: unsupported
     ;   ICAX2 = IOCB of server socket to accept from
-    
+
 
     ; OPEN H:
     ;   ICAX1 values:
@@ -204,13 +183,13 @@
     ;     bytes 4-5: Port in network order, 0 to select
     XIO_SOCK_BIND   = $30
 
-    ; Accept an incoming connection via GET single-byte op.
-    ; Returns the attach ID to pass into OPEN.  Make sure
-    ; the same device # is used for multi-eth systems.
-
     ; Connect an unconnected socket to a remote host.
     ; Socket is bound to *:0 if it is not already bound.
-    XIO_SOCK_CONNECT= $31
+    XIO_SOCK_CONN   = $31
+
+    ; Listen on an unconnected socket.
+    ; Socket is bound to *:0 if it is not already bound.
+    XIO_SOCK_LISTEN = $32
 
     ; Set iface IP address.
     ; Buffer format:

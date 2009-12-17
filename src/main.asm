@@ -1,20 +1,8 @@
 
     .include "sysequ.inc"
-    .include "w5100.inc"
+    .include "etherpbi.inc"
+    .include "w5300.inc"
     .include "cio.inc"
-
-    ;; Memory map:
-    ;; D100-D1FF (256 bytes): I/O area
-    ;;    D100-D17F: W5100 bank select bytes
-    ;;    D180-D18F: PBP Program memory bank 1 select
-    ;;    D190-D1EF: unused
-    ;;    D1FF: PBI select/interrupt register
-    ;; D600-D6FF (256 bytes): W5100 access area
-    ;; D700-D7FF (256 bytes): Buffer RAM bank 
-    ;; D800-DBFF (1024 bytes): PBP Program memory bank 0
-    ;; DC00-DFFF (1024 bytes): PBP Program memory bank 1
-    
-    DEVICE_NAME     = 'N'
 
     ;; PBI area at $D800
     .segment "HEADER"
@@ -45,12 +33,12 @@
     .byte 0
     
     ;; Initial CIO vectors
-    .word OPENV-1    ;OPEN_VEC-1
-    .word CLOSEV-1   ;CLOSE_VEC-1
-    .word READV-1    ;GETBYTE_VEC-1
-    .word WRITEV-1   ;PUTBYTE_VEC-1
-    .word STATUSV-1  ;STATUS_VEC-1
-    .word SPECIALV-1 ;SPECIAL_VEC-1
+    .word CIO_OPEN-1    ;OPEN_VEC-1
+    .word CIO_CLOSE-1   ;CLOSE_VEC-1
+    .word CIO_READ-1    ;GETBYTE_VEC-1
+    .word CIO_WRITE-1   ;PUTBYTE_VEC-1
+    .word CIO_STATUS-1  ;STATUS_VEC-1
+    .word CIO_SPECIAL-1 ;SPECIAL_VEC-1
     
     ;; Device initialization
     jmp INIT
@@ -70,30 +58,6 @@ IRQ:
 INIT:
     jmp RESET
     
-OPENV:
-    sta CIO_BANK
-    jmp OPEN
-
-CLOSEV:
-    sta CIO_BANK
-    jmp CLOSE
-
-READV:
-    sta CIO_BANK
-    jmp READ
-    
-WRITEV:
-    sta CIO_BANK
-    jmp WRITE
-
-STATUSV:
-    sta CIO_BANK
-    jmp STATUS
-
-SPECIALV:
-    sta CIO_BANK
-    jmp SPECIAL
-
 RESET:
     ;
     ; Complete reset procedure.
@@ -106,6 +70,37 @@ RESET:
     php
     sei
 
+    ; Load saved settings from flash.
+    
+    ; 
+
+    ;; Step 1.  Set up host interface.
+    ; Mode: Big-Endian, ignore PAUSE, disable PPPoE, etc.
+    lda #0
+    sta W5300_BANK_COMMON
+    sta W5300_REG_MR0
+    sta W5300_REG_MR1
+    ; Disable interrupts
+    sta W5300_REG_IMR0
+    sta W5300_REG_IMR1
+    
+    ;; Step 2. Set up net info.
+    ; SHAR, GAR, SUBR, SIPR
+
+
+    
+    ; RTR, RCR
+    
+    ;; Step 3. Allocate Rx/Tx RAM for sockets.
+    ; MTYPER, TMSR, RMSR
+    
+    ;; Step 4. Close all sockets
+    ldy #8
+@next:
+    dey
+    sta W5300_BANK_SOCK,y
+    sta W5300_REG_SOCK_CR
+    bne @next
 
     ; Restore system IRQs, if they were enabled before.
     plp
@@ -114,11 +109,16 @@ RESET:
     lda DEVMASK
     ora NDEVREQ
     sta DEVMASK
-    ; Add our device to HATABS.
-    ldx #DEVICE_NAME
+    ; Add our CIO devices to HATABS.
+    ldx #'@'
+@check_dev:
+    lda CIO_MAP-'@',x
+    bne @next_dev
     lda #<GENDEV
     ldy #>GENDEV
-    ; Exit via NEWDEV.
-    jmp NEWDEV
-    ; Ignore the result, because frankly, we don't much care.
-
+    jsr NEWDEV
+@next_dev:
+    inx
+    cpx #'z'+1
+    bne @check_dev
+    rts
