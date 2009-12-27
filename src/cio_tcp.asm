@@ -63,7 +63,46 @@ TCP_OPEN:
     rts
 
 @found:
+    ; Store socket number in aux3
+    ;sty ICAX3,x
+
+    ; Connect?
+    lda #0
+    cmp ICBLLZ
+    sbc ICBLHZ
+    beq @just_open
+
+    ldy #0
+    lda (ICBALZ),y
+    cmp #'!'
+    bne @xlate_text
+    lda ICBLHZ
+    cmp #0
+    beq @check_low
+@bad_buf:
+    ldy #EBADBUF
+    sec
+    rts
+@check_low:
+    lda ICBLLZ
+    cmp #6
+    bne @bad_buf
+    ; OK we have six raw bytes: IP followed by port
     
+
+
+@just_open:
+    ; Open socket
+    lda #0
+    sta W5300_REG_SOCK_MR0
+    ; TCP, no delayed ACK, MAC Filter
+    lda #%01100001
+    sta W5300_REG_SOCK_MR1
+    ; Open socket
+    lda #$01
+    sta W5300_REG_SOCK_CR
+    
+
     rts
 
 TCP_STATUS:

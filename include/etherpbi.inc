@@ -8,9 +8,8 @@
     ;;    D140-D17F: Program memory bank 1 select. 1K window, 64 banks.
     ;;    D180-D18F: W5300 uses 1K (10 bit) address space, mapped in 16 64-byte (6-bit) pieces.
     ;;        Read/write D180 to select bank 0, D181 to select bank 1 etc.
-    ;;    D190-D1BF: unused (possible mirrors of 80-8F)
-    ;;    D1C0-D1DF: unused (reserved for FLASH programming)
-    ;;    D1E0-D1FE: RAM bank select.  256 byte window, 31 banks (8Kbytes total)
+    ;;    D190-D1BF: unused (mirrors of 80-8F)
+    ;;    D1C0-D1FE: RAM bank select.  256 byte window, up to 63 banks (16Kbytes total)
     ;;    D1FF: PBI select/interrupt register
     ;; RAM: 8kB SRAM
     ;;    D600-D6FF (256 bytes): Fixed RAM bank (phys bank $1F)
