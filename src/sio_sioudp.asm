@@ -80,10 +80,12 @@ SIO_ENTRY:  ; At $DC00
     sta CDTMA2
     lda #>@resend_expired
     sta CDTMA2+1
+
 @resend:
     lda #2 ; timer 2
     jsr SETVBV
     jsr DO_SEND_COMMAND
+    
     ; Poll for reply-or-timeout.
 @poll:
     ldx W5300_REG_SOCK_RSR0
@@ -98,6 +100,7 @@ SIO_ENTRY:  ; At $DC00
     lsr
     bcc @poll_next
     lda #$80
+
 @poll_next:
     sta t3
     tay
@@ -150,25 +153,22 @@ SIO_ENTRY:  ; At $DC00
     bne @check_complete
 
 @nak:
-    lda #$40
-    sta W5300_REG_SOCK_CR
     ldy #EDNACK
     sty DSTATS
-    bne @done
+    bne @recv_done
 
 @check_complete:
     cmp #'C'
     beq @recv_reply
-    lda #$40
-    sta W5300_REG_SOCK_CR
     ldy #EDERROR
     sty DSTATS
-    bne @done    ; always
+    bne @recv_done    ; always
 
 @recv_reply:
     ; first test DSTATS to see whether we ignore the incoming data
     bit DSTATS
-    bvc @recv_done
+    bvc @recv_ok
+
 @read_reply_data:
     sec
     ; subtract header...
@@ -205,6 +205,10 @@ SIO_ENTRY:  ; At $DC00
     lda BFENHI
     sta DBYTHI
 
+@recv_ok:
+    ldy #1
+    sty DSTATS
+
 @recv_done:
     lda #$40    ; RECV
     sta W5300_REG_SOCK_CR
@@ -212,8 +216,10 @@ SIO_ENTRY:  ; At $DC00
     ldy #0
     lda #1
     jsr SETVBV  ; disable timer
-    ldy #1
-    sty DSTATS
+    ldx #0
+    ldy #0
+    lda #2
+    jsr SETVBV  ; disable timer
 
 @done:
     jsr SOCK_CLOSE_CURRENT
@@ -226,6 +232,7 @@ SIO_ENTRY:  ; At $DC00
     lda TIMFLG
     ora #%10000000
     sta TIMFLG
+
 @rts:
     rts
 
@@ -253,6 +260,7 @@ DO_SEND_COMMAND:
     ; set DHAR to FF:FF:FF:FF:FF:FF (broadcast)
     lda #$FF
     ldx #0
+
 @dhar_next:
     sta W5300_REG_SOCK_DHAR,x
     inx
@@ -260,6 +268,7 @@ DO_SEND_COMMAND:
     bne @dhar_next
     ; set DIPR to 255.255.255.255 (broadcast)
     ldx #4
+
 @dipr_next:
     sta W5300_REG_SOCK_DIPR,x
     inx
@@ -307,10 +316,12 @@ DO_SEND_COMMAND:
     lda DBYTLO
     sta W5300_REG_SOCK_TX_FIFOR1
     bvs @write_payload  ; always
+
 @write_zeros:
     lda #0
     sta W5300_REG_SOCK_TX_FIFOR0
     sta W5300_REG_SOCK_TX_FIFOR1
+
 @write_payload:
     ; now, the data payload (if any)
     bit DSTATS
@@ -327,6 +338,7 @@ DO_SEND_COMMAND:
     sta BFENLO
     ; write data
     jsr SOCK_WRITE
+
 @done_write:
     ; write packet length
     lda #0
@@ -339,6 +351,7 @@ DO_SEND_COMMAND:
     adc #$00    ; add in carry flag
     sta W5300_REG_SOCK_WRSR1
     stx W5300_REG_SOCK_WRSR2
+
 @no_data:
     ; execute send
     lda #$21    ; SEND_MAC
