@@ -1,3 +1,22 @@
+    ;;
+    ;; Copyright (C) 2013, David M. Lloyd
+    ;;
+    ;; This file is part of the PBIBox suite.
+    ;;
+    ;; PBIBox is free software: you can redistribute it and/or modify
+    ;; it under the terms of the GNU General Public License as published by
+    ;; the Free Software Foundation, either version 3 of the License, or
+    ;; (at your option) any later version.
+    ;;
+    ;; PBIBox is distributed in the hope that it will be useful,
+    ;; but WITHOUT ANY WARRANTY; without even the implied warranty of
+    ;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    ;; GNU General Public License for more details.
+    ;;
+    ;; You should have received a copy of the GNU General Public License
+    ;; along with PBIBox.  If not, see <http://www.gnu.org/licenses/>.
+    ;;
+
     ;; Include this file to put the bit tables into the current segment.
     ;; The tables are as described.
 
@@ -5,7 +24,7 @@
     ; Netmask/Hostmask tables.
     ;
     ; Find a byte starting in the fourth row of either
-    ; table and read that byte plus the three bytes *above* it 
+    ; table and read that byte plus the three bytes *above* it
     ; to get the mask bits.
     ;
     ; To get the netmask for each byte, put the netmask bits in X and do:
@@ -16,7 +35,7 @@
     ;
     ; To get the broadcast address, use ORA against HOSTMASK_TABLE.
     ; To get the network address, use AND against NETMASK_TABLE.
-    ; 
+    ;
     ; Note: don't let this cross a page boundary else there will
     ; be a one-cycle penalty...
     .byte $00, $00, $00, $00, $00, $00, $00, $00

@@ -1,3 +1,21 @@
+    ;;
+    ;; Copyright (C) 2013, David M. Lloyd
+    ;;
+    ;; This file is part of the PBIBox suite.
+    ;;
+    ;; PBIBox is free software: you can redistribute it and/or modify
+    ;; it under the terms of the GNU General Public License as published by
+    ;; the Free Software Foundation, either version 3 of the License, or
+    ;; (at your option) any later version.
+    ;;
+    ;; PBIBox is distributed in the hope that it will be useful,
+    ;; but WITHOUT ANY WARRANTY; without even the implied warranty of
+    ;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    ;; GNU General Public License for more details.
+    ;;
+    ;; You should have received a copy of the GNU General Public License
+    ;; along with PBIBox.  If not, see <http://www.gnu.org/licenses/>.
+    ;;
 
 
     ;
@@ -26,29 +44,29 @@
     ; Byte 4+ - Data (if any)
     ;
     ; Read (e.g. sector)
-    ; 1) CLIENT send COMMAND $52 (READ), data is: Sector # (4 bytes)
+    ; 1) CLIENT send COMMAND $52 (READ)
     ; 2) SERVER receive COMMAND
-    ; 3) SERVER send COMMAND COMPLETE $52 (READ), data is sector data (128, 256, 512, 1024 bytes)
+    ; 3) SERVER send COMMAND COMPLETE status 'C', data is sector data (128, 256, 512, 1024 bytes)
     ; 4) CLIENT receive COMMAND COMPLETE
     ;
     ; Write (w/ or w/o verify)
-    ; 1) CLIENT send COMMAND $57 or $50 (WRITE), data is: Sector # (4 bytes) + Sector data (N bytes)
+    ; 1) CLIENT send COMMAND $57 or $50 (WRITE), data is sector data (N bytes)
     ; 2) SERVER receive COMMAND
-    ; 3) SERVER send COMMAND COMPLETE $57/$50, no data
+    ; 3) SERVER send COMMAND COMPLETE status 'C', no data
     ; 4) CLIENT receive COMMAND COMPLETE
     ;
-    
+
     SIOUDP_PORT = $1983
-    
+
     .include "etherpbi.inc"
     .include "w5300.inc"
     .include "sysequ.inc"
     .include "sock.inc"
     .include "regs.inc"
-    
+
     .segment "SIOUDP"
 
-SIO_ENTRY:  ; At $DC00
+    .org $DC00
     php
     sei
     lda #0
@@ -70,7 +88,7 @@ SIO_ENTRY:  ; At $DC00
     sta CDTMA1+1
     lda #1 ; timer 1
     jsr SETVBV
-    
+
     lda #0
     sta TIMFLG ; this is our "timed out" flag - bit 6 = resend due, bit 7 = timeout
     ldx #0
@@ -85,7 +103,7 @@ SIO_ENTRY:  ; At $DC00
     lda #2 ; timer 2
     jsr SETVBV
     jsr DO_SEND_COMMAND
-    
+
     ; Poll for reply-or-timeout.
 @poll:
     ldx W5300_REG_SOCK_RSR0
@@ -196,7 +214,7 @@ SIO_ENTRY:  ; At $DC00
     sta BFENLO
     lda DBYTHI
     sta BFENHI
-@do_read:    
+@do_read:
     ; read the data
     jsr SOCK_READ
     ; report the bytes read
@@ -255,7 +273,7 @@ DO_CALC_TIMEOUT:
     and #%11000000
     tay ; low
     rts
-    
+
 DO_SEND_COMMAND:
     ; set DHAR to FF:FF:FF:FF:FF:FF (broadcast)
     lda #$FF
